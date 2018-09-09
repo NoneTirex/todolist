@@ -19,9 +19,12 @@ import org.springframework.security.oauth2.client.token.AccessTokenProviderChain
 import org.springframework.security.oauth2.client.token.grant.code.AuthorizationCodeAccessTokenProvider;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.filter.CompositeFilter;
+import pl.edu.tirex.todolist.user.User;
+import pl.edu.tirex.todolist.user.UserRepository;
 import pl.edu.tirex.todolist.util.HashHelper;
 
 import javax.servlet.Filter;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,10 +35,13 @@ public class SecurityConfiguration
 {
     private final OAuth2ClientContext oauth2ClientContext;
 
+    private final UserRepository userRepository;
+
     @Autowired
-    public SecurityConfiguration(OAuth2ClientContext oauth2ClientContext)
+    public SecurityConfiguration(OAuth2ClientContext oauth2ClientContext, UserRepository userRepository)
     {
         this.oauth2ClientContext = oauth2ClientContext;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -46,7 +52,7 @@ public class SecurityConfiguration
 
         http.authorizeRequests()
             .antMatchers("/login/**").anonymous()
-            .anyRequest().hasRole("USER")
+            .anyRequest().hasRole("ROLE_USER")
             .and().addFilterBefore(filter(), BasicAuthenticationFilter.class);
 
         http.headers().cacheControl().disable();
@@ -109,13 +115,13 @@ public class SecurityConfiguration
                 return null;
             }
             String hash = HashHelper.md5("google:" + sub);
-            EmailUser user = this.emailUserRepository.findUserByHash(hash);
+            User user = this.userRepository.findUserByHash(hash);
             if (user == null)
             {
-                user = new EmailUser(hash);
+                user = new User(hash);
             }
             user.setLastLogin(ZonedDateTime.now());
-            this.emailUserRepository.save(user);
+            this.userRepository.save(user);
             return user;
         });
     }
@@ -136,17 +142,15 @@ public class SecurityConfiguration
             {
                 return null;
             }
-
             String hash = HashHelper.md5("discord:" + id);
-            DiscordUser user = this.discordRepository.findUserByHash(hash);
+            User user = this.userRepository.findUserByHash(hash);
             if (user == null)
             {
-                user = new DiscordUser(hash);
+                user = new User(hash);
             }
             user.setLastLogin(ZonedDateTime.now());
-            this.discordRepository.save(user);
+            this.userRepository.save(user);
             return user;
-//            return null;
         });
         discordResources.setRequestFactory(new DiscordHttpRequestFactory());
         return discordResources;
