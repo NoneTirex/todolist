@@ -1,10 +1,14 @@
 package pl.edu.tirex.todolist.configuration;
 
+import org.springframework.boot.autoconfigure.security.oauth2.resource.AuthoritiesExtractor;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.PrincipalExtractor;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.ResourceServerProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.security.oauth2.client.token.grant.code.AuthorizationCodeResourceDetails;
+
+import java.util.Map;
+import java.util.function.Function;
 
 public class ClientResources
 {
@@ -16,12 +20,11 @@ public class ClientResources
 
     private PrincipalExtractor principalExtractor;
 
+    private AuthoritiesExtractor authoritiesExtractor;
+
     private ClientHttpRequestFactory requestFactory;
 
-    public ClientResources(PrincipalExtractor principalExtractor)
-    {
-        this.principalExtractor = principalExtractor;
-    }
+    private Function<Map<String, Object>, String> functionGetId;
 
     public AuthorizationCodeResourceDetails getClient()
     {
@@ -43,6 +46,16 @@ public class ClientResources
         this.principalExtractor = principalExtractor;
     }
 
+    public AuthoritiesExtractor getAuthoritiesExtractor()
+    {
+        return authoritiesExtractor;
+    }
+
+    public void setAuthoritiesExtractor(AuthoritiesExtractor authoritiesExtractor)
+    {
+        this.authoritiesExtractor = authoritiesExtractor;
+    }
+
     public ClientHttpRequestFactory getRequestFactory()
     {
         return requestFactory;
@@ -51,5 +64,15 @@ public class ClientResources
     public void setRequestFactory(ClientHttpRequestFactory requestFactory)
     {
         this.requestFactory = requestFactory;
+    }
+
+    public Function<Map<String, Object>, String> getFunctionGetId()
+    {
+        return functionGetId;
+    }
+
+    public void setFunctionGetId(Function<Map<String, Object>, String> functionGetId)
+    {
+        this.functionGetId = functionGetId;
     }
 }

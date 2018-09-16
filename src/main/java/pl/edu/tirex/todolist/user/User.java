@@ -2,13 +2,20 @@ package pl.edu.tirex.todolist.user;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreType;
 
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import java.time.ZonedDateTime;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Entity
 @JsonIgnoreType
@@ -24,6 +31,12 @@ public class User
     private ZonedDateTime lastLogin = ZonedDateTime.now();
 
     private ZonedDateTime created = ZonedDateTime.now();
+
+    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_role")
+    @Column(name = "role", nullable = false)
+    private Set<UserRole> roles = new HashSet<>();
 
     public User()
     {
@@ -52,6 +65,16 @@ public class User
     public ZonedDateTime getCreated()
     {
         return created;
+    }
+
+    public Set<UserRole> getRoles()
+    {
+        return roles;
+    }
+
+    public void setRoles(Set<UserRole> roles)
+    {
+        this.roles = roles;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package pl.edu.tirex.todolist.configuration;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.AuthoritiesExtractor;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.UserInfoTokenServices;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -9,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.OAuth2ClientContext;
 import org.springframework.security.oauth2.client.OAuth2RestTemplate;
 import org.springframework.security.oauth2.client.filter.OAuth2ClientAuthenticationProcessingFilter;
@@ -21,6 +22,7 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 import org.springframework.web.filter.CompositeFilter;
 import pl.edu.tirex.todolist.user.User;
 import pl.edu.tirex.todolist.user.UserRepository;
+import pl.edu.tirex.todolist.user.UserRole;
 import pl.edu.tirex.todolist.util.HashHelper;
 
 import javax.servlet.Filter;
@@ -48,11 +50,10 @@ public class SecurityConfiguration
     protected void configure(HttpSecurity http) throws Exception
     {
         // @formatter:off
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-
         http.authorizeRequests()
             .antMatchers("/login/**").anonymous()
-            .anyRequest().hasRole("ROLE_USER")
+            .antMatchers("/admin/**").hasRole("ADMIN")
+            .anyRequest().hasRole("USER")
             .and().addFilterBefore(filter(), BasicAuthenticationFilter.class);
 
         http.headers().cacheControl().disable();
@@ -93,6 +94,7 @@ public class SecurityConfiguration
         UserInfoTokenServices tokenServices = new UserInfoTokenServices(client.getResource().getUserInfoUri(),
                 client.getClient().getClientId());
         tokenServices.setPrincipalExtractor(client.getPrincipalExtractor());
+        tokenServices.setAuthoritiesExtractor(client.getAuthoritiesExtractor());
         tokenServices.setRestTemplate(template);
         filter.setTokenServices(tokenServices);
         return filter;
@@ -102,7 +104,8 @@ public class SecurityConfiguration
     @ConfigurationProperties("google")
     public ClientResources google()
     {
-        return new ClientResources(map ->
+        ClientResources resources = new ClientResources();
+        resources.setFunctionGetId(map ->
         {
             boolean verified = (boolean) map.get("email_verified");
             if (!verified)
@@ -114,23 +117,35 @@ public class SecurityConfiguration
             {
                 return null;
             }
-            String hash = HashHelper.md5("google:" + sub);
+            return HashHelper.md5("google:" + sub);
+        });
+        resources.setPrincipalExtractor(map ->
+        {
+            String hash = resources.getFunctionGetId().apply(map);
+            if (hash == null)
+            {
+                return null;
+            }
             User user = this.userRepository.findUserByHash(hash);
             if (user == null)
             {
                 user = new User(hash);
             }
             user.setLastLogin(ZonedDateTime.now());
+            user.getRoles().add(UserRole.ROLE_USER);
             this.userRepository.save(user);
             return user;
         });
+        resources.setAuthoritiesExtractor(authorizationExtractor(resources));
+        return resources;
     }
 
     @Bean
     @ConfigurationProperties("discord")
     public ClientResources discord()
     {
-        ClientResources discordResources = new ClientResources(map ->
+        ClientResources resources = new ClientResources();
+        resources.setFunctionGetId(map ->
         {
             boolean verified = (boolean) map.get("verified");
             if (!verified)
@@ -142,18 +157,46 @@ public class SecurityConfiguration
             {
                 return null;
             }
-            String hash = HashHelper.md5("discord:" + id);
+            return HashHelper.md5("discord:" + id);
+        });
+        resources.setPrincipalExtractor(map ->
+        {
+            String hash = resources.getFunctionGetId().apply(map);
+            if (hash == null)
+            {
+                return null;
+            }
             User user = this.userRepository.findUserByHash(hash);
             if (user == null)
             {
                 user = new User(hash);
             }
             user.setLastLogin(ZonedDateTime.now());
+            user.getRoles().add(UserRole.ROLE_USER);
             this.userRepository.save(user);
             return user;
         });
-        discordResources.setRequestFactory(new DiscordHttpRequestFactory());
-        return discordResources;
+        resources.setAuthoritiesExtractor(authorizationExtractor(resources));
+        resources.setRequestFactory(new DiscordHttpRequestFactory());
+        return resources;
+    }
+
+    private AuthoritiesExtractor authorizationExtractor(ClientResources resources)
+    {
+        return map ->
+        {
+            String hash = resources.getFunctionGetId().apply(map);
+            if (hash == null)
+            {
+                return null;
+            }
+            User user = this.userRepository.findUserByHash(hash);
+            if (user == null)
+            {
+                return Collections.emptyList();
+            }
+            return AuthorityUtils.createAuthorityList(user.getRoles().stream().map(Enum::name).toArray(String[]::new));
+        };
     }
 
     @Bean
