@@ -1,6 +1,7 @@
 package pl.edu.tirex.todolist.user;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreType;
+import pl.edu.tirex.todolist.board.Board;
 
 import javax.persistence.CollectionTable;
 import javax.persistence.Column;
@@ -12,6 +13,7 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OneToOne;
 import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Objects;
@@ -35,8 +37,11 @@ public class User
     @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "user_role")
-    @Column(name = "role", nullable = false)
+    @Column(name = "role", nullable = false, length = 32)
     private Set<UserRole> roles = new HashSet<>();
+
+    @OneToOne
+    private Board board;
 
     public User()
     {
@@ -77,6 +82,16 @@ public class User
         this.roles = roles;
     }
 
+    public Board getBoard()
+    {
+        return board;
+    }
+
+    public void setBoard(Board board)
+    {
+        this.board = board;
+    }
+
     @Override
     public int hashCode()
     {
@@ -104,7 +119,10 @@ public class User
         final StringBuilder sb = new StringBuilder("User{");
         sb.append("id=").append(id);
         sb.append(", hash='").append(hash).append('\'');
+        sb.append(", lastLogin=").append(lastLogin);
         sb.append(", created=").append(created);
+        sb.append(", roles=").append(roles);
+        sb.append(", board=").append(board);
         sb.append('}');
         return sb.toString();
     }

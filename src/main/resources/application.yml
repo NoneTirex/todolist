@@ -9,7 +9,7 @@ google:
     clientSecret: xxxxxxxxxxxxxxxxxxxxxxxx
     accessTokenUri: https://www.googleapis.com/oauth2/v4/token
     userAuthorizationUri: https://accounts.google.com/o/oauth2/v2/auth
-    clientAuthenticationScheme: basic
+    clientAuthenticationScheme: header
     scope:
     - profile
     - email
@@ -21,7 +21,7 @@ discord:
     clientSecret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     accessTokenUri: https://discordapp.com/api/oauth2/token
     userAuthorizationUri: https://discordapp.com/api/oauth2/authorize
-    clientAuthenticationScheme: basic
+    clientAuthenticationScheme: header
     scope:
     - identify
   resource:

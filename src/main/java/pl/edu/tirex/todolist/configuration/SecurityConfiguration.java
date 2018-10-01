@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.client.token.AccessTokenProviderChain
 import org.springframework.security.oauth2.client.token.grant.code.AuthorizationCodeAccessTokenProvider;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.filter.CompositeFilter;
+import pl.edu.tirex.todolist.board.BoardService;
 import pl.edu.tirex.todolist.user.User;
 import pl.edu.tirex.todolist.user.UserRepository;
 import pl.edu.tirex.todolist.user.UserRole;
@@ -39,11 +40,15 @@ public class SecurityConfiguration
 
     private final UserRepository userRepository;
 
+    private final BoardService boardService;
+
     @Autowired
-    public SecurityConfiguration(OAuth2ClientContext oauth2ClientContext, UserRepository userRepository)
+    public SecurityConfiguration(OAuth2ClientContext oauth2ClientContext, UserRepository userRepository,
+            BoardService boardService)
     {
         this.oauth2ClientContext = oauth2ClientContext;
         this.userRepository = userRepository;
+        this.boardService = boardService;
     }
 
     @Override
@@ -52,6 +57,7 @@ public class SecurityConfiguration
         // @formatter:off
         http.authorizeRequests()
             .antMatchers("/login/**").anonymous()
+            .antMatchers("/").permitAll()
             .antMatchers("/admin/**").hasRole("ADMIN")
             .anyRequest().hasRole("USER")
             .and().addFilterBefore(filter(), BasicAuthenticationFilter.class);
@@ -134,6 +140,11 @@ public class SecurityConfiguration
             user.setLastLogin(ZonedDateTime.now());
             user.getRoles().add(UserRole.ROLE_USER);
             this.userRepository.save(user);
+            if (user.getBoard() == null)
+            {
+                user.setBoard(this.boardService.createBoard(user));
+                this.userRepository.save(user);
+            }
             return user;
         });
         resources.setAuthoritiesExtractor(authorizationExtractor(resources));
@@ -174,6 +185,11 @@ public class SecurityConfiguration
             user.setLastLogin(ZonedDateTime.now());
             user.getRoles().add(UserRole.ROLE_USER);
             this.userRepository.save(user);
+            if (user.getBoard() == null)
+            {
+                user.setBoard(this.boardService.createBoard(user));
+                this.userRepository.save(user);
+            }
             return user;
         });
         resources.setAuthoritiesExtractor(authorizationExtractor(resources));
